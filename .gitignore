@@ -1,0 +1,22 @@
+# Rust / Bevy
+/target/
+**/*.rs.bk
+# Cargo.lock IS committed (binary game crate, reproducible builds)
+
+# Generated engine assets (keep hand-authored data)
+/assets/**/*.scn.ron
+/assets/**/*.bin
+
+# Editor / OS cruft
+.vscode/
+.idea/
+.fleet/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Local notes & scratch
+.notes/
+*.local.md

@@ -1,0 +1,9 @@
+# sample-mod/upgrades/arc_weaver_i.yaml
+id: arc_weaver_i
+type: weapon_upgrade
+weapon: arc_weaver
+cost: { cubes: 1 }
+rank_max: 5
+effect: { damage_pct: 8 }          # +8% damage per rank
+icon: upgrades/arc_weaver_i.svg
+color: "#FF7FD4"

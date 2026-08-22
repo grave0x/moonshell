@@ -1,0 +1,14 @@
+# sample-mod/weapons/lance.yaml
+# Design philosophy #2: single-target nuke. Slow, expensive, deletes one orc.
+id: lance
+name: Lance Rail
+description: One target, one outcome. Overkill is a design principle.
+sprite: towers/lance.svg
+cost_orbs: 3
+cap: 2
+damage: 320
+fire_rate: 0.25
+range: 420
+targeting: strong
+projectile: { kind: hitscan, pierce: 1, knockback: 40 }
+upgrades: [lance_i, lance_ii, lance_iii]

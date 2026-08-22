@@ -1,0 +1,16 @@
+# sample-mod/weapons/vulture.yaml
+# Design philosophy #3: economy/utility. Low damage, pays for itself.
+# Proves a tower's behavior can be ANYTHING when scripted — here, bonus diamonds.
+id: vulture
+name: Vulture Drone
+description: Hauls salvage. Every kill near a vulture pays a little extra.
+sprite: towers/vulture.svg
+cost_orbs: 1
+cap: 3
+damage: 2
+fire_rate: 3.0
+range: 180
+targeting: first
+projectile: { kind: bolt, speed: 420 }
+script: vulture.lua
+upgrades: [vulture_i, vulture_ii, vulture_iii]

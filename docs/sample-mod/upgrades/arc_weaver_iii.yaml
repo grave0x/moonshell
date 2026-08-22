@@ -1,0 +1,10 @@
+# sample-mod/upgrades/arc_weaver_iii.yaml
+id: arc_weaver_iii
+type: weapon_upgrade
+weapon: arc_weaver
+cost: { cubes: 3 }
+rank_max: 2
+effect: { chain_falloff: -0.1 }    # less damage falloff per jump
+requires: [arc_weaver_ii]
+icon: upgrades/arc_weaver_iii.svg
+color: "#FF7FD4"

@@ -1,0 +1,10 @@
+# sample-mod/upgrades/lance_ii.yaml
+id: lance_ii
+type: weapon_upgrade
+weapon: lance
+cost: { cubes: 2 }
+rank_max: 3
+effect: { fire_rate_pct: 10 }
+requires: [lance_i]
+icon: upgrades/lance_ii.svg
+color: "#FF7FD4"

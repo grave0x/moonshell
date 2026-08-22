@@ -1,0 +1,11 @@
+# sample-mod/races/critter.yaml
+id: critter
+name: Lunar Critter
+description: Small, fast, and plentiful. The swarm's worker unit.
+hp: 1
+speed: 2.2
+reward_diamonds: 1
+damage_to_hp: 1
+silver_chance: 0.01
+tint: "#7CFC00"
+script: critter.lua

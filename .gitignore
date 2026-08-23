@@ -1,5 +1,6 @@
 # Rust / Bevy
 /target/
+/spike/target/
 **/*.rs.bk
 # Cargo.lock IS committed (binary game crate, reproducible builds)
 

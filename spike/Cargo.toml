@@ -1,0 +1,33 @@
+[package]
+name = "moonshell-spike"
+version = "0.1.0"
+edition = "2024"
+description = "Moonshell P0 perf spike: can Bevy 0.19 move + render 100k entities @ 60fps?"
+
+[dependencies]
+bytemuck = { version = "1", features = ["derive"] }
+bevy = { version = "0.19.1", default-features = false, features = [
+    "std",
+    "multi_threaded",
+    "wayland",
+    "x11",
+    "bevy_winit",
+    "bevy_window",
+    "bevy_render",
+    "bevy_core_pipeline",
+    "bevy_sprite",
+    "bevy_sprite_render",
+    "bevy_asset",
+    "bevy_image",
+    "bevy_color",
+    "bevy_camera",
+    "bevy_log",
+    "bevy_input_focus",
+    "bevy_mesh",
+    "png",
+] }
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1

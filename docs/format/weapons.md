@@ -17,7 +17,7 @@ for its upgrade tree.
 | `fire_rate` | number | shots per second |
 | `range` | number | pixels |
 | `targeting` | string | `first` / `last` / `strong` / `manual` (drag-to-aim) |
-| `projectile` | object | speed, splash radius, pierce, bounce (wall-bounce laser!), burn, chain (Tesla) |
+| `projectile` | object | `kind` discriminator + fields. Kinds (draft): `bolt` (speed), `hitscan` (pierce, knockback), `chain` (chains, chain_falloff), `splash` (radius), `bounce` (bounces), `burn` (dps) |
 | `tick_damage` | number? | DoT (flamethrower burn) |
 | `script` | string? | Lua override for novel behavior |
 | `upgrades` | list | ids of nodes in the upgrade tree (pink cubes = per-weapon upgrades) |

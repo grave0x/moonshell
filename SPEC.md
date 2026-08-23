@@ -30,6 +30,7 @@
 - **No Steam Workshop, no modding categories** (verified via Steam Store API).
 - Its Nexus Mods page already has **3 mods two weeks post-launch**, including a loader and a mod menu — demand for modding this exact game is proven and active.
 - Modding is *not* an empty space in horde TD (Workshop/Nexus exist for OMD2, They Are Billions, Dungeon Defenders, Mindustry, Riftbreaker, BTD6…), but **nothing is open source except Mindustry** (GPL-3.0, 28.7k★, factory-focused, Java mods), and **nothing offers content-as-data modding** — every existing scene requires a toolchain (MelonLoader, SDKs, C#/Java), not a YAML file.
+- **First-hand perf observation (2026-08-23, soul interview follow-up):** the original **lags even at its lowest settings** on this project's target mid hardware (i7-1255U + Iris Xe, 15 GB) — the exact machine the spike runs on. The performance pitch is not hypothetical: we measured the bar with our own eyes.
 
 **Market-fit statement (locked):** *"The only open-source, horde-scale incremental tower defense where modding is editing data files — no SDK, no compilation, no loader hacks — and the whole game is forkable and learnable."*
 

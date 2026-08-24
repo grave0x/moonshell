@@ -94,6 +94,7 @@ unit-avoidance or dynamic costs later without changing the per-frame cost.
 | sprites (per-entity `Sprite`) | 18.0–27.5 ms | **36–55** | 51–83 ms | 12–19 |
 | flow-sprites | 24.1 ms | 42 | 51–72 ms | 14–20 |
 | **instanced (1 draw call)** | **7.5–8.0 ms** | **125–135** | 15–25 ms | **40–63** |
+| **flow-instanced** (combo) | ≈ instanced | ≈ instanced | 22.7 ms | 44 (load ~5) |
 
 GPU during naive sprites: 19–38 % util @ 7 W → **not GPU-bound**. The naive path is
 CPU-bound on per-entity sprite extraction (AABB + instance data per entity per frame).
@@ -111,6 +112,8 @@ pixels captured via grim, frames differ).
 
 ## Verdict & architecture decision
 
+- **Combo confirmed:** `flow-instanced` (flow routing + instanced draw) measures identical to
+  `instanced` — routing costs ~0 on top of the instanced render (44.0 vs 43.6 fps under load).
 - **P0 gate PASSED** via the instanced path: 100k entities @ >120 fps on mid hardware,
   >2× the 60 fps target, and it stays above 60 fps even while the machine is loaded.
 - SPEC §6's "sprite batching/instancing if the spike demands it" clause is **triggered**:

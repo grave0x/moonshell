@@ -8,6 +8,7 @@
 //!   moonshell-spike flow [ENTITIES] [SECONDS]     # flow-field pathfinding, no rendering
 //!   moonshell-spike flow-sprites [ENTITIES] [SECONDS] [ZOOM]  # flow field + rendering
 //!   moonshell-spike instanced [ENTITIES] [SECONDS] [ZOOM]     # ONE instanced draw call
+//!   moonshell-spike flow-instanced [ENTITIES] [SECONDS] [ZOOM]  # flow field + one instanced draw call
 //!
 //! The first WARMUP_SECONDS of any run are excluded from the measurement window.
 
@@ -76,6 +77,7 @@ pub enum Mode {
     Flow,
     FlowSprites,
     Instanced,
+    FlowInstanced,
 }
 
 impl Mode {
@@ -86,6 +88,7 @@ impl Mode {
             Mode::Flow => "flow",
             Mode::FlowSprites => "flow-sprites",
             Mode::Instanced => "instanced",
+            Mode::FlowInstanced => "flow-instanced",
         }
     }
 }
@@ -509,6 +512,32 @@ fn spawn_flow_orcs(
     );
 }
 
+/// Spawn 100k flow-field orcs WITHOUT per-entity sprites — the instanced proxy
+/// draws them (same layout/movement as `flow-sprites`, one instanced draw call).
+fn spawn_flow_orcs_plain(mut commands: Commands, mut stats: ResMut<SpikeStats>, cfg: Res<SpikeConfig>) {
+    stats.spawn_started = Some(Instant::now());
+    let n = cfg.entities;
+    let mut batch: Vec<(Transform, FlowOrc)> = Vec::with_capacity(n);
+    for i in 0..n {
+        let y = 30.0 + (i % GRID_H) as f32 * 15.0; // spread over the cave mouth
+        let speed = 60.0 + (i % 9) as f32 * 5.0; // px/s
+        batch.push((
+            Transform::from_translation(Vec3::new(8.0, y, 0.0)),
+            FlowOrc {
+                pos: Vec2::new(8.0, y),
+                speed,
+                seed: i as u32,
+            },
+        ));
+    }
+    commands.spawn_batch(batch);
+    stats.spawn_ms = Some(stats.spawn_started.unwrap().elapsed().as_secs_f64() * 1000.0);
+    info!(
+        "queued spawn of {n} flow orcs (instanced) in {:.1} ms",
+        stats.spawn_ms.unwrap()
+    );
+}
+
 fn step_flow_orcs(
     dt: f32,
     grid: &FlowGrid,
@@ -821,8 +850,11 @@ impl Plugin for OrcInstancingPlugin {
 }
 
 /// One instance per orc, written every frame. Cheap: 100k x 32 B pushes.
+/// Serves both the sine-corridor (`Orc`) and flow-field (`FlowOrc`) hordes —
+/// a run spawns exactly one kind, so the other query is simply empty.
 fn write_orc_instances(
     orcs: Query<(&Transform, &Orc)>,
+    flow_orcs: Query<(&Transform, &FlowOrc)>,
     mut data: Query<&mut InstanceMaterialData>,
     mut tick: Local<u32>,
 ) {
@@ -835,6 +867,12 @@ fn write_orc_instances(
         data.0.push(InstanceData {
             pos_size: [tf.translation.x, tf.translation.y, ORC_SIZE, ORC_SIZE],
             color: instance_color(orc.progress, orc.lane),
+        });
+    }
+    for (tf, orc) in &flow_orcs {
+        data.0.push(InstanceData {
+            pos_size: [tf.translation.x, tf.translation.y, ORC_SIZE, ORC_SIZE],
+            color: flow_instance_color(orc.seed as usize),
         });
     }
     if *tick % 120 == 0 && std::env::var("MOONSHELL_DEBUG").is_ok() {
@@ -851,6 +889,20 @@ fn instance_color(progress: f32, lane: f32) -> [f32; 4] {
     let g = 0.40 + 0.35 * (1.0 - progress);
     let r = 0.10 + 0.10 * ((lane * 0.5).abs());
     [r, g, 0.18, 1.0]
+}
+
+/// Flow-field orc instance color — mirrors `orcid_color` (the naive
+/// `flow-sprites` palette) so both complex-map paths render identically.
+fn flow_instance_color(i: usize) -> [f32; 4] {
+    if std::env::var("MOONSHELL_BRIGHT").is_ok() {
+        return [0.0, 1.0, 0.0, 1.0];
+    }
+    if i % 97 == 0 {
+        [0.75, 0.78, 0.82, 1.0] // silver
+    } else {
+        let g = 0.55 + 0.25 * ((i % 5) as f32 / 5.0);
+        [0.12, g, 0.22, 1.0]
+    }
 }
 
 /// Unit quad (two triangles), center-anchored, POSITION only.
@@ -1003,9 +1055,10 @@ fn main() {
         Some("flow") => Mode::Flow,
         Some("flow-sprites") => Mode::FlowSprites,
         Some("instanced") => Mode::Instanced,
+        Some("flow-instanced") => Mode::FlowInstanced,
         Some(other) => {
             eprintln!(
-                "unknown mode '{other}' — usage: moonshell-spike <sim|sprites|flow|flow-sprites|instanced> [entities] [seconds] [zoom] [ticks]"
+                "unknown mode '{other}' — usage: moonshell-spike <sim|sprites|flow|flow-sprites|instanced|flow-instanced> [entities] [seconds] [zoom] [ticks]"
             );
             std::process::exit(2);
         }
@@ -1024,7 +1077,7 @@ fn main() {
             let ticks = args.get(4).and_then(|s| s.parse().ok()).unwrap_or(0);
             (1.0, ticks)
         }
-        Mode::Sprites | Mode::FlowSprites | Mode::Instanced => {
+        Mode::Sprites | Mode::FlowSprites | Mode::Instanced | Mode::FlowInstanced => {
             let zoom = args.get(4).and_then(|s| s.parse().ok()).unwrap_or(1.0);
             let ticks = args.get(5).and_then(|s| s.parse().ok()).unwrap_or(0);
             (zoom, ticks)
@@ -1051,6 +1104,7 @@ fn main() {
         Mode::Flow => run_flow(cfg, false),
         Mode::FlowSprites => run_flow(cfg, true),
         Mode::Instanced => run_instanced(cfg),
+        Mode::FlowInstanced => run_flow_instanced(cfg),
     }
 }
 
@@ -1209,6 +1263,46 @@ fn run_instanced(cfg: SpikeConfig) {
     .insert_resource(cfg)
     .add_systems(Startup, (spawn_camera_no_indirect, spawn_orcs_plain, spawn_instance_proxy))
     .add_systems(Update, (move_orcs, collect_stats));
+    app.run();
+}
+
+fn run_flow_instanced(cfg: SpikeConfig) {
+    let mut app = App::new();
+    app.add_plugins((
+        MinimalPlugins,
+        LogPlugin::default(),
+        TransformPlugin,
+        InputPlugin,
+        InputFocusPlugin,
+        InputDispatchPlugin,
+        WindowPlugin {
+            primary_window: Some(Window {
+                title: "Moonshell spike — flow field instanced 100k".to_string(),
+                resolution: WindowResolution::new(960, 540),
+                present_mode: PresentMode::AutoNoVsync,
+                ..default()
+            }),
+            ..default()
+        },
+        AccessibilityPlugin,
+        AssetPlugin::default(),
+        WinitPlugin::default(),
+    ))
+    .add_plugins((
+        RenderPlugin::default(),
+        ImagePlugin::default(),
+        MeshPlugin,
+        CameraPlugin::default(),
+        PipelinedRenderingPlugin::default(),
+        CorePipelinePlugin::default(),
+        SpritePlugin::default(),
+        SpriteRenderPlugin,
+        OrcInstancingPlugin,
+    ))
+    .insert_resource(SpikeStats::new(Mode::FlowInstanced, cfg.entities, cfg.seconds).with_ticks(cfg.tick_rate))
+    .insert_resource(cfg)
+    .add_systems(Startup, (setup_flow, spawn_camera_no_indirect, spawn_flow_orcs_plain, spawn_instance_proxy))
+    .add_systems(Update, (move_flow_orcs, collect_stats));
     app.run();
 }
 

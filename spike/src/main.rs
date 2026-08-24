@@ -889,7 +889,7 @@ fn write_orc_instances(
     flow_orcs: Query<(&Transform, &FlowOrc)>,
     mut data: Query<&mut InstanceMaterialData>,
     mut camera: Query<(&GlobalTransform, &Projection), With<Camera>>,
-    mut window: Query<&Window, With<PrimaryWindow>>,
+    window: Query<&Window, With<PrimaryWindow>>,
     mut tick: Local<u32>,
 ) {
     *tick += 1;

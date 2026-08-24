@@ -127,6 +127,23 @@ pixels captured via grim, frames differ).
 - The naive sprite path remains fine for small counts (menus, projectiles < ~10k) and as
   a fallback during P1; the instanced path is the horde renderer.
 
+### 6. View culling (instanced path)
+
+| Scenario | cull OFF | cull ON | win |
+|---|---|---|---|
+| zoom 4.0 (small viewport, ~7 % visible) | 45–49 fps | **102–108 fps** | **2.2×** |
+| zoom 1.0 (whole map visible) | 44.9 fps | 44.5 fps | ~0 (correct: nothing to cull) |
+
+The instanced writer skips off-screen orcs (camera rect + margin, computed per
+frame). Big win when zoomed in or on maps larger than the viewport — i.e. the
+game's normal state. Toggle with `MOONSHELL_CULL=0` for A/B.
+
+### 7. Instance-buffer reuse
+
+The per-frame GPU instance buffer is now persistent: same allocation, one
+3.2 MB `write_buffer` per frame (no per-frame `create_buffer`). Included in
+all numbers above.
+
 ## Notes / caveats
 
 - **Quiet-machine numbers:** the "quiet" figures above were measured when the shared

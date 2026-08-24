@@ -40,11 +40,11 @@ use bevy::render::render_phase::{
     RenderCommandResult, SetItemPipeline, TrackedRenderPass, ViewSortedRenderPhases,
 };
 use bevy::render::render_resource::*;
-use bevy::render::renderer::RenderDevice;
+use bevy::render::renderer::{RenderDevice, RenderQueue};
 use bevy::render::sync_component::SyncComponent;
 use bevy::render::sync_world::MainEntity;
 use bevy::render::view::{ExtractedView, NoIndirectDrawing};
-use bevy::render::{Extract, Render, RenderApp, RenderStartup, RenderSystems};
+use bevy::render::{Render, RenderApp, RenderStartup, RenderSystems};
 use bevy::render::RenderPlugin;
 use bevy::sprite::SpritePlugin;
 use bevy::sprite_render::{
@@ -57,7 +57,7 @@ use bevy::mesh::{MeshVertexBufferLayoutRef, VertexBufferLayout};
 use bevy::shader::Shader;
 use bevy::time::TimePlugin;
 use bevy::transform::TransformPlugin;
-use bevy::window::{PresentMode, WindowResolution};
+use bevy::window::{PresentMode, PrimaryWindow, WindowResolution};
 use bevy::winit::WinitPlugin;
 use std::time::{Duration, Instant};
 
@@ -742,19 +742,29 @@ fn queue_orc_instances(
 
 fn prepare_orc_instance_buffers(
     mut commands: Commands,
-    query: Query<(Entity, &InstanceMaterialData)>,
+    mut query: Query<(Entity, &InstanceMaterialData, Option<&mut OrcInstanceBuffer>)>,
     render_device: Res<RenderDevice>,
+    render_queue: Res<RenderQueue>,
 ) {
-    for (entity, instance_data) in &query {
-        let buffer = render_device.create_buffer_with_data(&BufferInitDescriptor {
-            label: Some("orc instance buffer"),
-            contents: bytemuck::cast_slice(&instance_data.0),
-            usage: BufferUsages::VERTEX | BufferUsages::COPY_DST,
-        });
-        commands.entity(entity).insert(OrcInstanceBuffer {
-            buffer,
-            length: instance_data.0.len(),
-        });
+    for (entity, instance_data, existing) in &mut query {
+        let bytes = bytemuck::cast_slice(&instance_data.0);
+        let len = instance_data.0.len();
+        match existing {
+            // Reuse the persistent buffer when it is big enough — no per-frame
+            // GPU allocation, just one 3.2 MB write.
+            Some(mut buf) if buf.buffer.size() >= bytes.len() as u64 => {
+                render_queue.write_buffer(&buf.buffer, 0, bytes);
+                buf.length = len;
+            }
+            _ => {
+                let buffer = render_device.create_buffer_with_data(&BufferInitDescriptor {
+                    label: Some("orc instance buffer"),
+                    contents: bytes,
+                    usage: BufferUsages::VERTEX | BufferUsages::COPY_DST,
+                });
+                commands.entity(entity).insert(OrcInstanceBuffer { buffer, length: len });
+            }
+        }
     }
 }
 
@@ -852,26 +862,63 @@ impl Plugin for OrcInstancingPlugin {
 /// One instance per orc, written every frame. Cheap: 100k x 32 B pushes.
 /// Serves both the sine-corridor (`Orc`) and flow-field (`FlowOrc`) hordes —
 /// a run spawns exactly one kind, so the other query is simply empty.
+/// View-space rect for instance culling (world units), computed from the
+/// camera transform + ortho scale + actual window size, with an orc-size margin.
+fn view_cull_rect(
+    camera: &mut Query<(&GlobalTransform, &Projection), With<Camera>>,
+    window: Option<&Window>,
+) -> Option<Rect> {
+    if std::env::var("MOONSHELL_CULL").map(|v| v == "0").unwrap_or(false) {
+        return None;
+    }
+    let (ct, proj) = camera.single().ok()?;
+    let win = window?;
+    let scale = match proj {
+        Projection::Orthographic(p) => p.scale.max(1e-6),
+        _ => return None,
+    };
+    let half = Vec2::new(win.width() / (2.0 * scale), win.height() / (2.0 * scale))
+        + Vec2::splat(ORC_SIZE);
+    Some(Rect::from_center_size(ct.translation().truncate(), half * 2.0))
+}
+
+/// One instance per orc, written every frame. Cheap: 100k x 32 B pushes.
+/// View culling skips off-screen orcs (biggest win when zoomed / large maps).
 fn write_orc_instances(
     orcs: Query<(&Transform, &Orc)>,
     flow_orcs: Query<(&Transform, &FlowOrc)>,
     mut data: Query<&mut InstanceMaterialData>,
+    mut camera: Query<(&GlobalTransform, &Projection), With<Camera>>,
+    mut window: Query<&Window, With<PrimaryWindow>>,
     mut tick: Local<u32>,
 ) {
     *tick += 1;
     let Ok(mut data) = data.single_mut() else {
         return;
     };
+    let view = view_cull_rect(&mut camera, window.single().ok());
     data.0.clear();
     for (tf, orc) in &orcs {
+        let p = tf.translation.truncate();
+        if let Some(r) = view {
+            if !r.contains(p) {
+                continue;
+            }
+        }
         data.0.push(InstanceData {
-            pos_size: [tf.translation.x, tf.translation.y, ORC_SIZE, ORC_SIZE],
+            pos_size: [p.x, p.y, ORC_SIZE, ORC_SIZE],
             color: instance_color(orc.progress, orc.lane),
         });
     }
     for (tf, orc) in &flow_orcs {
+        let p = tf.translation.truncate();
+        if let Some(r) = view {
+            if !r.contains(p) {
+                continue;
+            }
+        }
         data.0.push(InstanceData {
-            pos_size: [tf.translation.x, tf.translation.y, ORC_SIZE, ORC_SIZE],
+            pos_size: [p.x, p.y, ORC_SIZE, ORC_SIZE],
             color: flow_instance_color(orc.seed as usize),
         });
     }

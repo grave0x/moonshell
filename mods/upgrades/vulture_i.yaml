@@ -1,0 +1,9 @@
+# sample-mod/upgrades/vulture_i.yaml
+id: vulture_i
+type: weapon_upgrade
+weapon: vulture
+cost: { cubes: 1 }
+rank_max: 5
+effect: { bonus_diamonds_pct: 20 }  # +20% salvage bonus per rank
+icon: upgrades/vulture_i.svg
+color: "#FF7FD4"

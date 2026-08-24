@@ -1,0 +1,12 @@
+# sample-mod/races/critter.yaml
+id: critter
+name: Lunar Critter
+description: Small, fast, and plentiful. The swarm's worker unit.
+hp: 2                     # >1 so on_death splitting (hp>1 guard) actually triggers: 2 -> two 1-hp children
+speed: 2.2
+reward_diamonds: 1
+damage_to_hp: 1
+silver_chance: 0.01
+tint: "#7CFC00"
+script: critter.lua
+scripting: lua

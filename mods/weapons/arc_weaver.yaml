@@ -1,0 +1,14 @@
+# sample-mod/weapons/arc_weaver.yaml
+id: arc_weaver
+name: Arc Weaver
+description: Chains between bio-signatures. Voltage is not a suggestion.
+sprite: towers/arc_weaver.svg
+cost_orbs: 1
+cap: 4
+damage: 12
+fire_rate: 2.0
+range: 220
+targeting: strong
+projectile: { kind: chain, chains: 5, chain_falloff: 0.8 }
+script: arc_weaver.lua
+upgrades: [arc_weaver_i, arc_weaver_ii, arc_weaver_iii]

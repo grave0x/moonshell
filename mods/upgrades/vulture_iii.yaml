@@ -1,0 +1,10 @@
+# sample-mod/upgrades/vulture_iii.yaml
+id: vulture_iii
+type: weapon_upgrade
+weapon: vulture
+cost: { cubes: 2 }
+rank_max: 2
+effect: { damage_pct: 50 }
+requires: [vulture_ii]
+icon: upgrades/vulture_iii.svg
+color: "#FF7FD4"

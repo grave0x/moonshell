@@ -1,0 +1,37 @@
+# mods/maps/sector_1_1.yaml
+# Sector 1 - Crater Rim: a serpentine corridor from the cave (west) to the
+# base (east). Draft schema fields added for P1-M1 (flagged in coordination):
+#   path:            polyline the orcs follow (world px) — gameplay route;
+#                    path_svg stays the art reference
+#   starting_towers: pre-placed towers (data-driven demo before the build UI)
+id: sector_1_1
+name: Sector 1 - Crater Rim
+path_svg: maps/sector_1_1.svg
+path:
+  - [80, 450]
+  - [300, 450]
+  - [420, 250]
+  - [620, 250]
+  - [740, 620]
+  - [980, 620]
+  - [1100, 330]
+  - [1340, 330]
+  - [1520, 450]
+routes: 1
+rounds: 3
+orc_budget: 400
+hp: 80
+spawn_rate: { base: 12, ramp: 0.05 }
+wave_schedule:
+  - round: 1
+    orcs: [{ race: critter, count: 150 }]
+  - round: 2
+    orcs: [{ race: critter, count: 150 }]
+  - round: 3
+    orcs: [{ race: critter, count: 100 }]
+starting_diamonds: 50
+starting_towers:
+  - { weapon: arc_weaver, x: 430, y: 380 }
+  - { weapon: arc_weaver, x: 990, y: 470 }
+  - { weapon: lance,      x: 730, y: 700 }
+  - { weapon: vulture,    x: 250, y: 360 }

@@ -1,0 +1,10 @@
+[workspace]
+resolver = "3"
+members = ["crates/moonshell"]
+# spike/ is a standalone perf harness with its own Cargo.lock — keep it independent.
+exclude = ["spike"]
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1

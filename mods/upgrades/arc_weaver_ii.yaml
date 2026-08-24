@@ -1,0 +1,10 @@
+# sample-mod/upgrades/arc_weaver_ii.yaml
+id: arc_weaver_ii
+type: weapon_upgrade
+weapon: arc_weaver
+cost: { cubes: 2 }
+rank_max: 3
+effect: { chains: 1 }              # +1 chain jump per rank
+requires: [arc_weaver_i]
+icon: upgrades/arc_weaver_ii.svg
+color: "#FF7FD4"

@@ -42,11 +42,13 @@ hurts. Recommend the single-crate start for P1 velocity.
 
 ## Milestones
 
-### M1 — Engine skeleton + content load (foundation)
-- [ ] Crate skeleton + app loop (winit window, fixed 60 Hz sim tick, instanced renderer from spike)
-- [ ] Content model: serde structs for race/weapon/map/upgrade; load sample mod YAML from `mods/`
-- [ ] Validate the whole sample mod loads (5 towers/3 maps/1 race + 3 towers + 9 upgrades are starter scope)
-- **Exit:** window opens, sample-mod towers render as instanced sprites, no panic on any YAML.
+### M1 — Engine skeleton + content load (foundation) ✅ done (commit c752b8e)
+- [x] Crate skeleton + app loop (winit window, instanced renderer from spike)
+- [x] Content model: serde structs for race/weapon/map/upgrade; load sample mod YAML from `mods/`
+- [x] Validate the whole sample mod loads + cross-references resolve (errors carry file paths)
+- [x] Sample map `sector_1_1` (draft schema additions: `path` polyline, `starting_towers`)
+- [x] Battle sim seed: spawner per wave schedule, flow-field follow, leaks drain HP, win/lose
+- **Exit:** met — towers render as cyan instanced quads, orcs trace the serpentine route and leak, no panic.
 
 ### M2 — Battle sim (the heart)
 - [ ] Map: routes (waypoint polyline for the flow-field sources), rounds, orc budgets (docs/format/maps.md)

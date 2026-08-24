@@ -14,7 +14,7 @@ write in any editor. No SDK. No compilation. No loader hacks.
   content tree from the in-game console (`~`) with tab completion and `save()`.
 - **Stack:** Rust + Bevy 0.19 · lossless round-trip YAML (yaml-edit) · sandboxed Lua 5.4 (mlua)
 - **License:** GPL-3.0 · free on GitHub/itch, paid Steam + Play later (Mindustry model)
-- **Goal:** out-perform the original — 100k entities @ 60fps (spike pending)
+- **Goal:** out-perform the original — 100k entities @ 60fps ([spike passed](docs/PERF_SPIKE.md): 125–135 fps @ 100k on mid hardware)
 
 ## The docs exist before the engine (deliberately)
 
@@ -32,11 +32,15 @@ shapes them before a line of game code is written:
 [Try the sample mod](docs/sample-mod/) — a working skeleton: a new race + 3 towers with
 upgrade trees. Pure data, zero engine code.
 
+[Perf spike](docs/PERF_SPIKE.md) — the P0 gate, measured: 100k entities move at ~400–650 fps
+(ECS + flow-field routing) and render through one instanced draw call at 125–135 fps. The
+horde renderer is instanced; per-entity sprites stay for small counts.
+
 ## Status & roadmap
 
-**Pre-P0.** Mod-format docs published; engine next. P0 = repo + 100k perf spike → P1 = core
-loop prototype → P2 = modding platform → P3 = v1 gate (demo mods, settings, saves) → v1 free
-beta on itch, paid Steam/Play launch.
+**P0 ✅ done.** Mod-format docs published + repo live + 100k perf spike passed
+(2026-08-24) → **P1** = core loop prototype → P2 = modding platform → P3 = v1 gate
+(demo mods, settings, saves) → v1 free beta on itch, paid Steam/Play launch.
 
 ## Signal interest
 

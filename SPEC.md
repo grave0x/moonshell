@@ -42,7 +42,8 @@
 
 ```mermaid
 flowchart TD
-    A[Launch] --> B[HUB - upgrade tree screen]
+    A[Launch] --> S[Loading splash - Nanos Project logo]
+    S --> B[HUB - upgrade tree screen]
     B --> C[Spend currencies: blue diamonds / orange orbs / pink cubes]
     C --> D[Weapon unlocks / upgrades / player stats]
     D --> E[Press Play]

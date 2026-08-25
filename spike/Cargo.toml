@@ -31,3 +31,18 @@ bevy = { version = "0.19.1", default-features = false, features = [
 opt-level = 3
 lto = "thin"
 codegen-units = 1
+
+# Strict correctness build: release speed, but with runtime checks ON.
+# Measures the cost of safety (integer overflow checks + debug assertions).
+# Build: cargo build --profile strict   ->  target/strict/
+[profile.strict]
+inherits = "release"
+overflow-checks = true
+debug-assertions = true
+
+# Strict optimization build: full LLVM ("fat") LTO — the linker sees every
+# crate at once. Builds slower, can be measurably faster at runtime.
+# Build: cargo build --profile strict_lto  ->  target/strict_lto/
+[profile.strict_lto]
+inherits = "release"
+lto = "fat"

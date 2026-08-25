@@ -182,10 +182,10 @@ flowchart LR
 
 ## 9. Open Items (small, non-blocking)
 
-1. Exact sources of Orbs/Cubes (observed: Diamonds = kills; pending in-play confirmation).
-   **Placeholder adopted 2026-08-24** (pending in-play confirmation): orbs 🟠 per map-clear +
-   wave milestones; cubes 🟪 per run score. Diamonds 🔷 = kills (observed). Mirrors P1_PLAN
-   decision 2; revisit once the original's economy is confirmed in-play.
+1. Exact sources of Orbs/Cubes. **CONFIRMED by user sign-off 2026-08-25**:
+   orbs 🟠 per map-clear + wave milestones; cubes 🟪 per run score; diamonds 🔷 = kills
+   (observed). Locked; unblocks M2 economy. Revisit only if in-play testing of the
+   original contradicts it (recorded override path: change this line + P1_PLAN decision 2).
 2. End-of-run screen copy (win/lose/surrender wording).
 3. Title stylization: **Moonshell** (default) vs MoonShell.
 4. Repo creation + first commit (P0) — pending "go".

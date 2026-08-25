@@ -57,7 +57,7 @@ hurts. Recommend the single-crate start for P1 velocity.
 - [ ] Projectiles: speed/splash/pierce/bounce/chain/burn per weapon schema
 - [ ] Damage & death: **hp <= 0 kills**; `on_death` hooks receive pre-death HP (split-on-death works);
       kills → 💎 diamonds; silver/explosive meta nodes
-- [ ] Economy: orbs/cubes from upgrade-tree node purchases (in-play source pending SPEC §9-1 confirmation)
+- [ ] Economy: orbs/cubes from upgrade-tree node purchases (**sources confirmed 2026-08-25**: orbs per map-clear + wave milestones, cubes per run score)
 - [ ] Win (all orcs dead → full-clear bonus) / lose (HP 0, loot kept, layout persists) / surrender (bank, exit)
 - **Exit:** a full battle on a sample map runs to a win and a lose with correct currencies.
 
@@ -79,9 +79,9 @@ hurts. Recommend the single-crate start for P1 velocity.
 1. **Death threshold:** docs recommendation stands — hp <= 0, `on_death` gets pre-death HP
    (adopted-by-default 2026-08-24 via user 'continue'; still open to explicit override)
    (so split-on-death works). Unblocks M2 damage system.
-2. **Orb/cube exact sources** (SPEC §9-1): observed diamonds = kills; orbs/cubes pending
-   in-play confirmation of the original. Suggest until confirmed: orbs per map-clear +
-   wave milestones, cubes per run score — flag as placeholder.
+2. **Orb/cube exact sources** (SPEC §9-1): **CONFIRMED by user sign-off 2026-08-25** —
+   orbs 🟠 per map-clear + wave milestones; cubes 🟪 per run score; diamonds 🔷 = kills.
+   Not a placeholder anymore; M2 economy unblocked.
 3. **Repo layout** (above) — confirm with current spike owner before scaffolding.
 
 ## Out of scope for P1 (P2+)

@@ -26,7 +26,9 @@ upgrade fields match the documented schema. The 3 towers cover 3 philosophies
   critter kills worth 1 diamond → rank 1 pays `round(1×0.2)=0`. The economy
   tower visibly pays nothing until rank 3 (60% → 1). Consider `ceil` semantics,
   a base bonus, or higher-reward races in the demo map — or keep it as a
-  deliberate "invest to see returns" curve.
+  deliberate "invest to see returns" curve. **Decision (2026-08-24): kept as-is and
+  documented** — the demo intends an invest-to-see-returns arc; revisit only if playtest
+  feedback flags rank-1 dead-zone as confusing.
 - **Sample map: RESOLVED (2026-08-24).** `mods/maps/sector_1_1.yaml` exists —
   references the 3 sample weapons (arc_weaver, lance, vulture), 3 rounds,
   `path` polyline + `starting_towers` (draft schema), validated by the engine

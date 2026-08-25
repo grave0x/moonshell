@@ -77,6 +77,7 @@ hurts. Recommend the single-crate start for P1 velocity.
 ## Open decisions needed before/early P1 (user sign-off)
 
 1. **Death threshold:** docs recommendation stands — hp <= 0, `on_death` gets pre-death HP
+   (adopted-by-default 2026-08-24 via user 'continue'; still open to explicit override)
    (so split-on-death works). Unblocks M2 damage system.
 2. **Orb/cube exact sources** (SPEC §9-1): observed diamonds = kills; orbs/cubes pending
    in-play confirmation of the original. Suggest until confirmed: orbs per map-clear +

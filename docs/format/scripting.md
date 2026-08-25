@@ -40,6 +40,7 @@ api.damage(ent, amount, {kind="fire"|"shock"|"kinetic"})
 api.spawn(race_id, at)
 api.slow(ent, factor, seconds)
 api.chain(from_ent, targets, {chains=n, falloff=0.8})
+-- arithmetic: api.round(x) uses round-half-away-from-zero (pinned; see AUDIT note)
 api.explode(at, radius, damage)
 -- economy
 api.grant_diamonds(n)

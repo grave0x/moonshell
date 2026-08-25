@@ -144,6 +144,22 @@ The per-frame GPU instance buffer is now persistent: same allocation, one
 3.2 MB `write_buffer` per frame (no per-frame `create_buffer`). Included in
 all numbers above.
 
+### 8. Profile comparison: release vs strict vs strict_lto (PENDING — bench running)
+
+Method: same headless suite as above (`bench-suite.sh 6 <out> "release strict strict_lto"`),
+sim/flow @100k + windowed instanced. Profiles: `release` (thin LTO, codegen-units 1),
+`strict` (release + overflow-checks + debug-assertions — cost of runtime safety),
+`strict_lto` (fat LTO — cost/benefit of full-program optimization).
+
+| profile | sim 100k (avg_ms) | flow 100k (avg_ms) | instanced 100k (fps) |
+|---|---|---|---|
+| release | — | — | — |
+| strict | — | — | — |
+| strict_lto | — | — | — |
+
+> Numbers pending: strict/strict_lto builds running throttled on a shared-load machine
+> (coordinator M3 UI dep build in parallel). Filled when the bench completes.
+
 ## Notes / caveats
 
 - **Quiet-machine numbers:** the "quiet" figures above were measured when the shared

@@ -13,19 +13,32 @@ pub struct Orc {
     pub pos: Vec2,
     pub speed_px: f32, // px/s along the field
     pub seed: u32,
-    #[allow(dead_code)] // M2: damage/death
     pub hp: f32,
-    #[allow(dead_code)] // M2: kill rewards
     pub reward_diamonds: u32,
     pub damage_to_hp: f32,
+    /// Distance travelled along the route — used by `first`/`last` targeting.
+    pub dist: f32,
 }
 
 #[derive(Component)]
 pub struct Tower {
-    #[allow(dead_code)] // M2: firing
     pub weapon: String,
-    #[allow(dead_code)] // M2: targeting
     pub pos: Vec2,
+    pub cooldown: f32,
+}
+
+/// A homing/chain projectile (hitscan is resolved at fire time).
+#[derive(Component)]
+pub struct Projectile {
+    pub pos: Vec2,
+    pub target: Entity,
+    pub speed: f32,
+    pub damage: f32,
+    pub range_left: f32,
+    pub kind: String,
+    pub chains_left: u32,
+    pub chain_falloff: f32,
+    pub splash_radius: f32,
 }
 
 /// Grid of flow directions toward the base.
@@ -254,6 +267,7 @@ fn spawn_orcs(
             hp: race.hp,
             reward_diamonds: race.reward_diamonds,
             damage_to_hp: race.damage_to_hp,
+            dist: 0.0,
         });
         battle.orcs_alive += 1;
     }
@@ -275,6 +289,7 @@ fn move_orcs(
         let d = grid.direction_at(orc.pos);
         let speed = orc.speed_px;
         orc.pos += d * speed * dt;
+        orc.dist += speed * dt;
         if orc.pos.distance(end) < 18.0 {
             battle.base_hp -= orc.damage_to_hp;
             battle.leaks += 1;
@@ -291,6 +306,227 @@ fn move_orcs(
     }
 }
 
+/// Pick a target for a tower per its weapon's targeting mode.
+fn find_target(
+    tower_pos: Vec2,
+    weapon: &crate::content::Weapon,
+    orcs: &Query<(Entity, &mut Orc)>,
+) -> Option<Entity> {
+    let mut best: Option<(Entity, f32, f32)> = None; // (entity, key, dist)
+    for (entity, orc) in orcs {
+        let d = orc.pos.distance(tower_pos);
+        if d > weapon.range {
+            continue;
+        }
+        let key = match weapon.targeting.as_str() {
+            "first" => orc.dist,                     // furthest along the route
+            "last" => -orc.dist,
+            "strong" => orc.hp * 1000.0 - d * 0.001, // max hp, ties by proximity
+            _ => -d,                                 // default: nearest
+        };
+        match best {
+            Some((_, bk, bd)) if (key, d) >= (bk, bd) => {}
+            _ => best = Some((entity, key, d)),
+        }
+    }
+    best.map(|(e, _, _)| e)
+}
+
+/// Apply damage; hp <= 0 kills (docs recommendation: on_death hooks would get
+/// pre-death HP — scripting lands in P2).
+fn damage_orc(
+    entity: Entity,
+    damage: f32,
+    orcs: &mut Query<(Entity, &mut Orc)>,
+    battle: &mut Battle,
+    to_despawn: &mut Vec<Entity>,
+) {
+    let Ok((_, mut orc)) = orcs.get_mut(entity) else {
+        return;
+    };
+    orc.hp -= damage;
+    if orc.hp <= 0.0 {
+        battle.kills += 1;
+        battle.diamonds += orc.reward_diamonds;
+        battle.orcs_alive -= 1;
+        to_despawn.push(entity);
+    }
+}
+
+/// Towers: acquire target, fire per fire_rate. Hitscan resolves instantly;
+/// everything else spawns a projectile.
+fn tower_fire(
+    time: Res<Time>,
+    weapons: Res<Weapons>,
+    mut battle: ResMut<Battle>,
+    mut orcs: Query<(Entity, &mut Orc)>,
+    mut towers: Query<(Entity, &mut Tower)>,
+    mut commands: Commands,
+) {
+    let dt = time.delta_secs_f64() as f32;
+    if battle.outcome.is_some() {
+        return;
+    }
+    let mut despawn = Vec::new();
+    for (_entity, mut tower) in &mut towers {
+        tower.cooldown -= dt;
+        if tower.cooldown > 0.0 {
+            continue;
+        }
+        let Some(weapon) = weapons.0.get(&tower.weapon) else {
+            continue;
+        };
+        let Some(target) = find_target(tower.pos, weapon, &orcs) else {
+            continue;
+        };
+        tower.cooldown = 1.0 / weapon.fire_rate.max(0.001);
+
+        match weapon.projectile.as_ref().map(|p| p.kind.as_str()).unwrap_or("bolt") {
+            "hitscan" => {
+                // Instant damage, then up to `pierce` more orcs near the line.
+                damage_orc(target, weapon.damage, &mut orcs, &mut battle, &mut despawn);
+                let pierce = weapon
+                    .projectile
+                    .as_ref()
+                    .and_then(|p| p.pierce)
+                    .unwrap_or(0);
+                let target_pos = orcs.get(target).map(|o| o.1.pos).ok();
+                if pierce > 0 {
+                    if let Some(tp) = target_pos {
+                        let dir = (tp - tower.pos).normalize_or_zero();
+                        let mut hit = 0;
+                        let mut candidates: Vec<(f32, Entity)> = orcs
+                            .iter()
+                            .filter_map(|(e, o)| {
+                                let v = o.pos - tower.pos;
+                                if v.length() <= weapon.range
+                                    && v.normalize_or_zero().dot(dir) > 0.7
+                                {
+                                    Some((v.length(), e))
+                                } else {
+                                    None
+                                }
+                            })
+                            .collect();
+                        candidates.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+                        for (_, e) in candidates {
+                            if hit >= pierce {
+                                break;
+                            }
+                            if e != target {
+                                damage_orc(e, weapon.damage, &mut orcs, &mut battle, &mut despawn);
+                                hit += 1;
+                            }
+                        }
+                    }
+                }
+            }
+            _ => {
+                let projectile = weapon.projectile.clone().unwrap_or_default();
+                commands.spawn((
+                    Projectile {
+                        pos: tower.pos,
+                        target,
+                        speed: projectile.speed.unwrap_or(400.0),
+                        damage: weapon.damage,
+                        range_left: weapon.range + 60.0,
+                        kind: projectile.kind.clone(),
+                        chains_left: projectile.chains.unwrap_or(0),
+                        chain_falloff: projectile.chain_falloff.unwrap_or(1.0),
+                        splash_radius: projectile.splash_radius.unwrap_or(0.0),
+                    },
+                    Transform::from_translation(tower.pos.extend(0.0)),
+                ));
+            }
+        }
+    }
+    for e in despawn {
+        commands.entity(e).despawn();
+    }
+}
+
+/// Homing projectiles; hit resolution (damage, chain, splash, pierce).
+fn move_projectiles(
+    time: Res<Time>,
+    mut battle: ResMut<Battle>,
+    mut orcs: Query<(Entity, &mut Orc)>,
+    mut projectiles: Query<(Entity, &mut Projectile, &mut Transform)>,
+    mut commands: Commands,
+) {
+    let dt = time.delta_secs_f64() as f32;
+    let mut despawn = Vec::new();
+    let mut spawn = Vec::new();
+    for (entity, mut proj, mut tf) in &mut projectiles {
+        proj.range_left -= proj.speed * dt;
+        if proj.range_left <= 0.0 {
+            despawn.push(entity);
+            continue;
+        }
+        let target_pos = orcs.get(proj.target).map(|o| o.1.pos).ok();
+        let Some(tp) = target_pos else {
+            despawn.push(entity); // target died to something else
+            continue;
+        };
+        let dir = (tp - proj.pos).normalize_or_zero();
+        let speed = proj.speed;
+        proj.pos += dir * speed * dt;
+        tf.translation.x = proj.pos.x;
+        tf.translation.y = proj.pos.y;
+
+        if proj.pos.distance(tp) >= 10.0 {
+            continue;
+        }
+        // Hit.
+        damage_orc(proj.target, proj.damage, &mut orcs, &mut battle, &mut despawn);
+        if proj.splash_radius > 0.0 {
+            let hits: Vec<Entity> = orcs
+                .iter()
+                .filter(|(e, o)| *e != proj.target && o.pos.distance(proj.pos) < proj.splash_radius)
+                .map(|(e, _)| e)
+                .collect();
+            for e in hits {
+                damage_orc(e, proj.damage * 0.5, &mut orcs, &mut battle, &mut despawn);
+            }
+        }
+        if proj.kind == "chain" && proj.chains_left > 0 {
+            // Chain to the nearest other orc within 150 px.
+            let mut best: Option<(f32, Entity)> = None;
+            for (e, o) in &orcs {
+                if e == proj.target {
+                    continue;
+                }
+                let d = o.pos.distance(proj.pos);
+                if d < 150.0 && best.map_or(true, |(bd, _)| d < bd) {
+                    best = Some((d, e));
+                }
+            }
+            if let Some((_, next)) = best {
+                spawn.push((
+                    Projectile {
+                        pos: proj.pos,
+                        target: next,
+                        speed: 900.0,
+                        damage: proj.damage * proj.chain_falloff,
+                        range_left: 200.0,
+                        kind: "chain".to_string(),
+                        chains_left: proj.chains_left - 1,
+                        chain_falloff: proj.chain_falloff,
+                        splash_radius: 0.0,
+                    },
+                    Transform::from_translation(proj.pos.extend(0.0)),
+                ));
+            }
+        }
+        despawn.push(entity);
+    }
+    for e in despawn {
+        commands.entity(e).despawn();
+    }
+    for (proj, tf) in spawn {
+        commands.spawn((proj, tf));
+    }
+}
+
 /// End-of-round / win check.
 fn check_outcome(mut battle: ResMut<Battle>) {
     if battle.outcome.is_some() {
@@ -303,6 +539,9 @@ fn check_outcome(mut battle: ResMut<Battle>) {
 
 #[derive(Resource)]
 pub struct Races(pub std::collections::HashMap<String, Race>);
+
+#[derive(Resource)]
+pub struct Weapons(pub std::collections::HashMap<String, crate::content::Weapon>);
 
 #[allow(dead_code)]
 pub const TICK_RATE: u32 = 60;
@@ -331,10 +570,12 @@ impl Plugin for BattlePlugin {
     fn build(&self, app: &mut App) {
         let map = self.content.get_map("sector_1_1").cloned().expect("sector_1_1");
         let races = Races(self.content.races.clone());
+        let weapons = Weapons(self.content.weapons.clone());
         let grid = build_flow_grid(&map);
         let battle = Battle::new(&map);
         app.insert_resource(map)
             .insert_resource(races)
+            .insert_resource(weapons)
             .insert_resource(grid)
             .insert_resource(battle)
             .add_systems(Startup, spawn_towers)
@@ -342,7 +583,9 @@ impl Plugin for BattlePlugin {
                 Update,
                 (
                     spawn_orcs,
+                    tower_fire,
                     move_orcs,
+                    move_projectiles,
                     check_outcome,
                     log_outcome,
                 )
@@ -357,6 +600,7 @@ fn spawn_towers(mut commands: Commands, map: Res<MapDef>) {
             Tower {
                 weapon: t.weapon.clone(),
                 pos: Vec2::new(t.x, t.y),
+                cooldown: 0.0,
             },
             Transform::from_translation(Vec3::new(t.x, t.y, 0.0)),
         ));

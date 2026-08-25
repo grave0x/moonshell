@@ -51,7 +51,7 @@ pub struct Race {
     pub tint: Option<String>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Default, Deserialize)]
 pub struct Projectile {
     pub kind: String,
     #[serde(default)]

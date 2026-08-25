@@ -33,7 +33,7 @@ use bevy::sprite_render::{
     RenderMesh2dInstances, SetMesh2dBindGroup, SetMesh2dViewBindGroup, ViewKeyCache,
 };
 
-use crate::sim::{Orc, Tower};
+use crate::sim::{Orc, Projectile, Tower};
 use crate::ORC_SIZE;
 
 #[repr(C)]
@@ -177,6 +177,9 @@ fn prepare_instance_buffers(
     for (entity, instance_data, existing) in &mut query {
         let bytes = bytemuck::cast_slice(&instance_data.0);
         let len = instance_data.0.len();
+        if bytes.is_empty() {
+            continue; // nothing to draw yet (e.g. no projectiles in flight)
+        }
         match existing {
             Some(mut buf) if buf.buffer.size() >= bytes.len() as u64 => {
                 render_queue.write_buffer(&buf.buffer, 0, bytes);
@@ -236,6 +239,9 @@ impl<P: PhaseItem> RenderCommand<P> for DrawInstanced {
         let Some(instance_buffer) = instance_buffer else {
             return RenderCommandResult::Skip;
         };
+        if instance_buffer.length == 0 {
+            return RenderCommandResult::Skip;
+        }
         pass.set_vertex_buffer(0, vertex_buffer_slice.buffer.slice(..));
         pass.set_vertex_buffer(1, instance_buffer.buffer.slice(..));
         let count = instance_buffer.length as u32;
@@ -268,7 +274,14 @@ pub struct InstancedRenderPlugin;
 impl Plugin for InstancedRenderPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(ExtractComponentPlugin::<InstanceMaterialData>::default())
-            .add_systems(Update, (write_orc_instances, write_tower_instances));
+            .add_systems(
+                Update,
+                (
+                    write_orc_instances,
+                    write_tower_instances,
+                    write_projectile_instances,
+                ),
+            );
 
         let Some(render_app) = app.get_sub_app_mut(RenderApp) else {
             return;
@@ -328,6 +341,23 @@ fn write_orc_instances(
     }
 }
 
+fn write_projectile_instances(
+    projectiles: Query<(&Transform, &Projectile)>,
+    mut data: Query<&mut InstanceMaterialData, With<ProjectileProxy>>,
+) {
+    let Ok(mut data) = data.single_mut() else {
+        return;
+    };
+    data.0.clear();
+    for (tf, _proj) in &projectiles {
+        let p = tf.translation.truncate();
+        data.0.push(InstanceData {
+            pos_size: [p.x, p.y, 4.0, 4.0],
+            color: [1.0, 0.85, 0.2, 1.0], // projectiles: yellow
+        });
+    }
+}
+
 fn write_tower_instances(
     towers: Query<(&Transform, &Tower)>,
     mut data: Query<&mut InstanceMaterialData, With<TowerProxy>>,
@@ -355,6 +385,8 @@ fn orc_color(seed: u32) -> [f32; 4] {
 pub struct OrcProxy;
 #[derive(Component)]
 pub struct TowerProxy;
+#[derive(Component)]
+pub struct ProjectileProxy;
 
 pub fn quad_mesh() -> Mesh {
     let positions: Vec<[f32; 3]> = vec![
@@ -380,11 +412,19 @@ pub fn spawn_proxies(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>) {
         OrcProxy,
     ));
     commands.spawn((
-        Mesh2d(mesh),
+        Mesh2d(mesh.clone()),
         InstanceMaterialData(Vec::with_capacity(1024)),
         Transform::default(),
         Visibility::default(),
         NoFrustumCulling,
         TowerProxy,
+    ));
+    commands.spawn((
+        Mesh2d(mesh),
+        InstanceMaterialData(Vec::with_capacity(4096)),
+        Transform::default(),
+        Visibility::default(),
+        NoFrustumCulling,
+        ProjectileProxy,
     ));
 }

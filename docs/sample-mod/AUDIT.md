@@ -27,9 +27,10 @@ upgrade fields match the documented schema. The 3 towers cover 3 philosophies
   tower visibly pays nothing until rank 3 (60% → 1). Consider `ceil` semantics,
   a base bonus, or higher-reward races in the demo map — or keep it as a
   deliberate "invest to see returns" curve.
-- **No sample map yet.** The v1 gate (new race + 3 towers + trees) doesn't need
-  one, but `maps.md`/README show `maps/` in the mod tree — a 1-round
-  `sector_1_1` example would complete the "every mod is a folder" picture.
+- **Sample map: RESOLVED (2026-08-24).** `mods/maps/sector_1_1.yaml` exists —
+  references the 3 sample weapons (arc_weaver, lance, vulture), 3 rounds,
+  `path` polyline + `starting_towers` (draft schema), validated by the engine
+  loader (`content.rs`). Completes the "every mod is a folder" picture.
 - **`api.round` rounding mode** should be pinned in the engine spec (round-half-
   away-from-zero assumed here).
 

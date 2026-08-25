@@ -24,6 +24,8 @@ function on_kill(ent, killer, ctx) end -- weapon: kill credit (economy towers)
 -- future: on_hit, on_spawn, on_update
 ```
 
+Death semantics (draft — P1_PLAN decision 1, pending user sign-off): a race dies when `hp <= 0`; `on_death` receives the entity with its **pre-death** HP (the value before the lethal hit), so split-on-death and overkill logic can read the actual health at the moment of death.
+
 `ctx` carries battle context (round, position, battle state). `killer` is the
 attacking entity: `killer.weapon` (weapon id), `killer.pos()`, plus any weapon
 upgrade effects merged onto it (`killer.bonus_diamonds_pct`, ...).

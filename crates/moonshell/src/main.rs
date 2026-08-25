@@ -7,6 +7,8 @@
 mod content;
 mod render;
 mod sim;
+mod splash;
+mod ui;
 
 use bevy::a11y::AccessibilityPlugin;
 use bevy::core_pipeline::CorePipelinePlugin;
@@ -21,13 +23,16 @@ use bevy::render::view::NoIndirectDrawing;
 use bevy::render::RenderPlugin;
 use bevy::sprite::SpritePlugin;
 use bevy::sprite_render::SpriteRenderPlugin;
-use bevy::transform::TransformPlugin;
+use bevy::text::TextPlugin;
+use bevy::ui::UiPlugin;
 use bevy::window::{PresentMode, WindowResolution};
 use bevy::winit::WinitPlugin;
 
 use content::load_mods;
 use render::InstancedRenderPlugin;
 use sim::BattlePlugin;
+use splash::SplashPlugin;
+use ui::UiPlugin2;
 
 pub const ORC_SIZE: f32 = 6.0;
 
@@ -87,11 +92,16 @@ fn main() {
             CorePipelinePlugin::default(),
             SpritePlugin::default(),
             SpriteRenderPlugin,
+            TextPlugin,
+            UiPlugin,
             InstancedRenderPlugin,
-            BattlePlugin { content },
+            SplashPlugin,
+            BattlePlugin { content: content.clone() },
+            UiPlugin2,
         ))
+        .insert_resource(content)
         .insert_resource(CameraConfig { center, zoom })
-        .add_systems(Startup, (spawn_camera, render::spawn_proxies))
+        .add_systems(Startup, render::spawn_proxies)
         .add_systems(Update, sim::hud_status)
         .run();
 }
@@ -102,7 +112,7 @@ pub struct CameraConfig {
     pub zoom: f32,
 }
 
-fn spawn_camera(mut commands: Commands, cfg: Res<CameraConfig>) {
+pub(crate) fn spawn_camera(mut commands: Commands, cfg: Res<CameraConfig>) {
     let mut proj = OrthographicProjection::default_2d();
     proj.scale = cfg.zoom;
     commands.spawn((

@@ -20,7 +20,7 @@ use serde::Deserialize;
 // Schema types (draft v0.1 + P1-M1 additions: map.path, map.starting_towers)
 // ---------------------------------------------------------------------------
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct Manifest {
     pub id: String,
     pub name: String,
@@ -182,7 +182,7 @@ pub struct MapDef {
 // Loaded content
 // ---------------------------------------------------------------------------
 
-#[derive(Debug, Default)]
+#[derive(Debug, Clone, Default, Resource)]
 pub struct Content {
     pub manifest: Option<Manifest>,
     pub races: HashMap<String, Race>,

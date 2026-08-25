@@ -174,6 +174,11 @@ fn dist_to_segment(p: Vec2, a: Vec2, b: Vec2) -> f32 {
 /// Battle state: currencies, HP, spawner progress, outcome.
 #[derive(Resource)]
 pub struct Battle {
+    pub orbs: u32,
+    pub cubes: u32,
+    pub owned_weapons: Vec<String>,
+    pub weapon_prices: std::collections::HashMap<String, u32>,
+    pub upgrade_ranks: std::collections::HashMap<String, u32>,
     #[allow(dead_code)] // M2: round reporting
     pub map_id: String,
     pub base_hp: f32,
@@ -199,8 +204,16 @@ pub enum BattleOutcome {
 }
 
 impl Battle {
-    pub fn new(map: &MapDef) -> Self {
+    pub fn new(map: &MapDef, weapons: &std::collections::HashMap<String, crate::content::Weapon>) -> Self {
         Self {
+            orbs: 0,
+            cubes: 0,
+            owned_weapons: Vec::new(),
+            weapon_prices: weapons
+                .iter()
+                .map(|(id, w)| (id.clone(), w.cost_orbs))
+                .collect(),
+            upgrade_ranks: std::collections::HashMap::new(),
             map_id: map.id.clone(),
             base_hp: map.hp,
             base_hp_max: map.hp,
@@ -239,6 +252,21 @@ fn spawn_orcs(
     while battle.spawn_acc >= 1.0 && battle.orcs_spawned < battle.orc_budget {
         battle.spawn_acc -= 1.0;
         battle.orcs_spawned += 1;
+        // Wave milestone: each completed wave_schedule round grants an orb
+        // (user sign-off 2026-08-25: orbs per wave milestone + map clear).
+        let mut cumulative = 0u32;
+        for round in &map.wave_schedule {
+            let round_size: u32 = round.orcs.iter().map(|g| g.count).sum();
+            cumulative += round_size;
+            if battle.orcs_spawned == cumulative {
+                battle.orbs += 1;
+                battle.rounds_complete += 1;
+                info!("wave {} cleared — +1 🟠 orb (now {})", round.round, battle.orbs);
+            }
+            if battle.orcs_spawned < cumulative {
+                break;
+            }
+        }
         // Which race? Walk the schedule to find the group covering this orc.
         let mut idx = battle.orcs_spawned; // 1-based
         let mut race_id = None;
@@ -534,6 +562,21 @@ fn check_outcome(mut battle: ResMut<Battle>) {
     }
     if battle.orcs_spawned >= battle.orc_budget && battle.orcs_alive == 0 {
         battle.outcome = Some(BattleOutcome::Won);
+        // Economy (user sign-off 2026-08-25): map clear -> orbs; run score ->
+        // cubes. Full-clear (no leaks) doubles the map-clear orbs.
+        let full_clear = battle.leaks == 0;
+        let clear_orbs = if full_clear { 3 } else { 1 };
+        battle.orbs += clear_orbs;
+        let score = battle.kills + battle.leaks * 0; // kills are the score
+        let cubes = 1 + (battle.kills / 100) + if full_clear { 1 } else { 0 };
+        battle.cubes += cubes;
+        info!(
+            "economy: +{} 🟠 (map clear{}) · +{} 🟪 (score {} kills)",
+            clear_orbs,
+            if full_clear { " + full-clear bonus" } else { "" },
+            cubes,
+            score
+        );
     }
 }
 
@@ -572,16 +615,16 @@ impl Plugin for BattlePlugin {
         let races = Races(self.content.races.clone());
         let weapons = Weapons(self.content.weapons.clone());
         let grid = build_flow_grid(&map);
-        let battle = Battle::new(&map);
+        let battle = Battle::new(&map, &weapons.0);
         app.insert_resource(map)
             .insert_resource(races)
             .insert_resource(weapons)
             .insert_resource(grid)
             .insert_resource(battle)
-            .add_systems(Startup, spawn_towers)
             .add_systems(
                 Update,
                 (
+                    spawn_towers,
                     spawn_orcs,
                     tower_fire,
                     move_orcs,
@@ -589,12 +632,21 @@ impl Plugin for BattlePlugin {
                     check_outcome,
                     log_outcome,
                 )
-                    .chain(),
+                    .chain()
+                    .run_if(crate::ui::battle_started),
             );
     }
 }
 
-fn spawn_towers(mut commands: Commands, map: Res<MapDef>) {
+fn spawn_towers(mut commands: Commands, map: Res<MapDef>, mut done: Local<bool>) {
+    if *done {
+        return;
+    }
+    *done = true;
+    if std::env::var("MOONSHELL_NO_TOWERS").is_ok() {
+        info!("towers disabled (MOONSHELL_NO_TOWERS) — lose-path verification");
+        return;
+    }
     for t in &map.starting_towers {
         commands.spawn((
             Tower {

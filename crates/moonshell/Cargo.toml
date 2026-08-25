@@ -23,6 +23,10 @@ bevy = { version = "0.19.1", default-features = false, features = [
     "bevy_log",
     "bevy_input_focus",
     "bevy_mesh",
+    "bevy_ui",
+    "bevy_text",
+    "default_font",
+    "debug",
     "png",
 ] }
 bytemuck = { version = "1", features = ["derive"] }

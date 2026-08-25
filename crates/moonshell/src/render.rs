@@ -34,6 +34,7 @@ use bevy::sprite_render::{
 };
 
 use crate::sim::{Orc, Projectile, Tower};
+use crate::splash::SplashDot;
 use crate::ORC_SIZE;
 
 #[repr(C)]
@@ -280,6 +281,7 @@ impl Plugin for InstancedRenderPlugin {
                     write_orc_instances,
                     write_tower_instances,
                     write_projectile_instances,
+                    write_splash_instances,
                 ),
             );
 
@@ -380,9 +382,36 @@ fn orc_color(seed: u32) -> [f32; 4] {
     [0.12, g, 0.22, 1.0]
 }
 
+fn splash_color(progress: f32, seed: u32) -> [f32; 4] {
+    if seed % 97 == 0 {
+        [0.78, 0.82, 0.88, 1.0] // silver accent
+    } else {
+        [0.1 + 0.1 * progress, 0.5 + 0.25 * progress, 0.62, 1.0]
+    }
+}
+
+fn write_splash_instances(
+    dots: Query<(&Transform, &SplashDot)>,
+    mut data: Query<&mut InstanceMaterialData, With<SplashProxy>>,
+) {
+    let Ok(mut data) = data.single_mut() else {
+        return;
+    };
+    data.0.clear();
+    for (tf, dot) in &dots {
+        let p = tf.translation.truncate();
+        data.0.push(InstanceData {
+            pos_size: [p.x, p.y, ORC_SIZE, ORC_SIZE],
+            color: splash_color(dot.progress, dot.seed),
+        });
+    }
+}
+
 /// Marker so the two proxies (orcs vs towers) are distinct targets.
 #[derive(Component)]
 pub struct OrcProxy;
+#[derive(Component)]
+pub struct SplashProxy;
 #[derive(Component)]
 pub struct TowerProxy;
 #[derive(Component)]
@@ -418,6 +447,14 @@ pub fn spawn_proxies(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>) {
         Visibility::default(),
         NoFrustumCulling,
         TowerProxy,
+    ));
+    commands.spawn((
+        Mesh2d(mesh.clone()),
+        InstanceMaterialData(Vec::with_capacity(8192)),
+        Transform::default(),
+        Visibility::default(),
+        NoFrustumCulling,
+        SplashProxy,
     ));
     commands.spawn((
         Mesh2d(mesh),
